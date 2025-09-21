@@ -146,37 +146,49 @@ class JDIHScraper {
       console.log('🔍 Search URL:', `${this.searchUrl}?${params}`);
       console.log('🔍 Search params:', params.toString());
 
-      // Random User-Agent rotation
+      // Random User-Agent rotation with more realistic browsers
       const userAgents = [
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
         'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/121.0',
-        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15'
+        'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15',
+        'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Edge/120.0.0.0 Safari/537.36'
       ];
       
       const randomUA = userAgents[Math.floor(Math.random() * userAgents.length)];
 
+      // Add more realistic headers to mimic real browser
+      const headers = {
+        'User-Agent': randomUA,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'DNT': '1',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate',
+        'Sec-Fetch-Site': 'same-origin',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0',
+        'Referer': 'https://jdih.dephub.go.id/',
+        'Origin': 'https://jdih.dephub.go.id'
+      };
+
+      console.log('🔍 Using User-Agent:', randomUA);
+
       const response = await axios.get(`${this.searchUrl}?${params}`, {
-        headers: {
-          'User-Agent': randomUA,
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-          'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-          'Accept-Encoding': 'gzip, deflate, br',
-          'DNT': '1',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1',
-          'Sec-Fetch-Dest': 'document',
-          'Sec-Fetch-Mode': 'navigate',
-          'Sec-Fetch-Site': 'none',
-          'Cache-Control': 'max-age=0',
-          'Referer': 'https://jdih.dephub.go.id/'
-        },
+        headers: headers,
         timeout: 30000,
         maxRedirects: 5,
         validateStatus: function (status) {
           return status >= 200 && status < 400; // Accept redirects
-        }
+        },
+        // Add more realistic request options
+        decompress: true,
+        responseType: 'text'
       });
 
       console.log('🔍 Response status:', response.status);
@@ -189,6 +201,58 @@ class JDIHScraper {
       return results;
     } catch (error) {
       console.error('Error searching peraturan:', error.message);
+      
+      // Check if response contains blocking message
+      if (error.response && error.response.data && 
+          error.response.data.includes('Request Rejected')) {
+        console.log('🚫 Request blocked by JDIH server, trying alternative approach...');
+        
+        // Try with different approach - simulate form submission
+        try {
+          await new Promise(resolve => setTimeout(resolve, 3000 + Math.random() * 2000));
+          
+          const formData = new URLSearchParams();
+          formData.append('PencarianPeraturanForm[kataKunci]', kataKunci);
+          formData.append('PencarianPeraturanForm[nomorPeraturan]', nomorPeraturan);
+          formData.append('PencarianPeraturanForm[tahunPeraturan]', tahunPeraturan);
+          formData.append('PencarianPeraturanForm[jenisPeraturan]', jenisPeraturan);
+          if (kelompok) {
+            formData.append('kelompok', kelompok);
+          }
+          formData.append('page', page);
+          formData.append('per-page', perPage);
+          
+          const alternativeHeaders = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Origin': 'https://jdih.dephub.go.id',
+            'Referer': 'https://jdih.dephub.go.id/peraturan/index',
+            'Cache-Control': 'no-cache',
+            'Pragma': 'no-cache'
+          };
+          
+          console.log('🔄 Trying POST request with form data...');
+          const postResponse = await axios.post(this.searchUrl, formData, {
+            headers: alternativeHeaders,
+            timeout: 30000,
+            maxRedirects: 5,
+            validateStatus: function (status) {
+              return status >= 200 && status < 400;
+            }
+          });
+          
+          console.log('🔍 POST Response status:', postResponse.status);
+          console.log('🔍 POST Response data length:', postResponse.data.length);
+          
+          return this.parseSearchResults(postResponse.data);
+        } catch (postError) {
+          console.error('POST request also failed:', postError.message);
+          return [];
+        }
+      }
       
       // Retry with exponential backoff if it's a rate limit or network error
       if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT' || 
