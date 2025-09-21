@@ -362,4 +362,5 @@ MIT License - see LICENSE file for details
 
 
 **Nonton anime dan donghua sub indonesia gratis**
-- site URL: `https://rijunime.com`
+- site URL:  [Rijunime.com](https://rijunime.com)``
+
