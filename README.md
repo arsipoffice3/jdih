@@ -359,3 +359,7 @@ MIT License - see LICENSE file for details
 - JDIH scraping
 - Multiple search types
 - Analytics and statistics
+
+
+**Nonton anime dan donghua sub indonesia gratis**
+- site URL: `https://rijunime.com`
