@@ -27,12 +27,44 @@ class TelegramBotWrapper {
     try {
       console.log('🚀 Starting Telegram Bot...');
       
-      // Create bot instance
-      this.bot = new TelegramBot(this.token, { polling: true });
+      // Clean up any existing webhook first
+      try {
+        const tempBot = new TelegramBot(this.token);
+        await tempBot.deleteWebHook();
+        console.log('🧹 Cleaned up existing webhook');
+      } catch (webhookError) {
+        console.log('ℹ️ No webhook to clean up or error cleaning webhook:', webhookError.message);
+      }
       
-      // Handle polling errors
+      // Create bot instance with polling
+      this.bot = new TelegramBot(this.token, { 
+        polling: {
+          interval: 1000,
+          autoStart: true,
+          params: {
+            timeout: 10
+          }
+        }
+      });
+      
+      // Handle polling errors with better error handling
       this.bot.on('polling_error', (error) => {
         console.error('❌ Telegram polling error:', error.message);
+        
+        // Handle specific error types
+        if (error.message.includes('409 Conflict')) {
+          console.log('🔄 Telegram bot conflict detected, stopping and restarting...');
+          this.stop().then(() => {
+            setTimeout(() => {
+              this.start();
+            }, 5000); // Wait 5 seconds before restart
+          });
+        } else if (error.message.includes('429')) {
+          console.log('⏳ Rate limited, waiting before retry...');
+          setTimeout(() => {
+            this.start();
+          }, 30000); // Wait 30 seconds for rate limit
+        }
       });
 
       // Handle successful connection
@@ -317,11 +349,19 @@ class TelegramBotWrapper {
     }
   }
 
-  stop() {
+  async stop() {
     if (this.bot) {
-      this.bot.stopPolling();
-      this.isConnected = false;
-      console.log('🛑 Telegram Bot stopped');
+      try {
+        console.log('🛑 Stopping Telegram Bot...');
+        await this.bot.stopPolling();
+        this.bot = null;
+        this.isConnected = false;
+        console.log('✅ Telegram Bot stopped successfully');
+      } catch (error) {
+        console.error('❌ Error stopping Telegram Bot:', error.message);
+        this.bot = null;
+        this.isConnected = false;
+      }
     }
   }
 }
